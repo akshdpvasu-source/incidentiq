@@ -1,0 +1,14 @@
+# IncidentIQ - Python 3.10+
+pandas>=2.0
+numpy>=1.24
+Faker>=20.0
+fastapi>=0.110
+uvicorn>=0.27
+requests>=2.31
+scikit-learn>=1.3
+streamlit>=1.50
+plotly>=5.20
+python-dotenv>=1.0
+boto3>=1.34      # optional: only used when S3 is configured
+pytest>=8.0
+httpx>=0.27      # FastAPI test client

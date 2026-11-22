@@ -1,0 +1,16 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+db/incidentiq.db
+data/raw/*.csv
+data/cleaned/*
+data/rejected/*
+data/reference/*
+data/api_source/*
+data/reports/*
+!data/**/.gitkeep
+.claude/
+.DS_Store
