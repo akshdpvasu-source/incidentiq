@@ -3,6 +3,7 @@ import pandas as pd
 import streamlit as st
 
 from src import analytics
+from src.ai.similar_incidents import SimilarIncidentIndex
 from src.catalog import TEAMS
 from src.load_db import read_table
 
@@ -40,6 +41,12 @@ def query(name, filters=None):
 @st.cache_data(show_spinner=False)
 def table(sql, params=()):
     return read_table(sql, params)
+
+
+@st.cache_resource(show_spinner="Building the similarity index...")
+def similar_index():
+    """One TF-IDF index of solved tickets, shared by Ticket Assistant, Raise a Ticket and Agent Desk."""
+    return SimilarIncidentIndex()
 
 
 def clear_caches():

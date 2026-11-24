@@ -30,6 +30,12 @@ flowchart LR
         SI["similar_incidents.py<br/>TF-IDF"]
         LLM["llm_client.py<br/>Claude / OpenAI / Gemini → Ollama"]
     end
+    subgraph Helpdesk["Help-desk workflow"]
+        RT["Raise a Ticket<br/>(employee)"]
+        PO["portal.py<br/>create / assign / resolve / track"]
+        AD["Agent Desk<br/>(IT agent)"]
+        AC["agent_chat.py<br/>grounded AI copilot"]
+    end
     UI["Streamlit dashboard<br/>app/streamlit_app.py"]
 
     CSV --> IF --> T
@@ -48,6 +54,12 @@ flowchart LR
     G --> TS --> UI
     SU --> UI
     SI --> UI
+    RT --> PO --> DB
+    AD --> PO
+    AD --> SI
+    AD --> AC --> LLM
+    SI --> AC
+    PO -. "resolution joins the knowledge base" .-> SI
 ```
 
 ## Data flow in one sentence per stage
@@ -76,8 +88,23 @@ flowchart LR
 | 5-second progress-handler timeout | runaway joins |
 | Grounding check on the explanation | flags numbers that are not in the result rows |
 
+## Help-desk workflow in one sentence per step
+
+1. **Upload**: `save_uploaded_csv()` validates the file (type, size, encoding, required columns), stores it
+   under a safe unique name in `data/raw/`, and the normal ingest → clean → load runs on it.
+2. **Raise**: `portal.create_ticket()` validates input, routes the ticket by category, sets the SLA from the
+   urgency and writes it (plus the requester and an audit event) in one transaction. Ids are `INC09xxxxx`.
+   All portal tickets share the rolling batch `B-PORTAL`, which reconciles like any other batch.
+3. **Handle**: the agent takes the ticket (`assign_ticket`), sees TF-IDF neighbours from the solved tickets,
+   and can ask the LLM for a summary, a suggested fix and a chat. `agent_chat.chat_reply()` sends only the
+   ticket, the retrieved cases and the recent chat, then validates the cited ids.
+4. **Resolve**: `resolve_ticket()` stores notes, time and SLA result; the similarity index is rebuilt so the fix
+   is searchable at once. `refresh_open_ticket_clocks()` keeps age and breach flags of open tickets current.
+
 ## Tables
 
 `batches`, `teams`, `agents`, `categories`, `tickets`, `resolutions`, `rejected_records`,
 `ai_query_log` (schema in `db/schema.sql`). One addition to the brief: `batches.file_size`.
+The help-desk workflow adds `portal_requests` (who asked, from where) and `ticket_events` (audit trail). Both are
+created with `IF NOT EXISTS`, so an existing database upgrades itself, and neither is on the AI's allow-list.
 The view `v_tickets` joins tickets to their dimensions for the analytics queries; the AI cannot use it.

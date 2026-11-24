@@ -9,7 +9,7 @@ import streamlit as st
 from src import config
 from src.generate_data import generate_all
 from src.ingest_api import ApiUnavailableError, api_is_up, ingest_api
-from src.ingest_files import ingest_file, list_raw_files
+from src.ingest_files import ingest_file, list_raw_files, save_uploaded_csv
 from src.load_db import load_batch, read_table
 from src.pipeline import run_api, run_file
 from src.transform import clean, save_outputs
@@ -82,6 +82,43 @@ def _steps():
         st.caption(f"Current batch: **{batch}** - {len(df):,} rows from {source}")
 
 
+def _upload_section():
+    """Upload your own ticket CSV; it is stored in data/raw/ and can be loaded in one click."""
+    st.subheader("Upload your own CSV")
+    st.caption("Needs at least these columns: ticket_id, opened_at, priority, category. Optional ones "
+               "(description, resolution_notes, ...) make the similar-incident search much better. "
+               "See sample_data/ for a ready-made file.")
+    up = st.file_uploader("Ticket CSV", type=["csv"], key="csv_upload", label_visibility="collapsed")
+    if up is None:  # file removed from the widget: forget it so the same file can be re-uploaded
+        S.pop("upload_name", None)
+        S.pop("upload_info", None)
+        return
+    if S.get("upload_name") != (up.name, up.size):
+        try:
+            info = save_uploaded_csv(up.name, up.getvalue())
+        except ValueError as exc:
+            st.error(str(exc))
+            return
+        S.update(upload_info=info, upload_name=(up.name, up.size))
+    info = S.get("upload_info")
+    if not info or S.get("upload_name") is None:
+        return
+    st.success(f"Saved **{info['path'].name}** to data/raw/ - {info['rows']:,} rows.")
+    if info["missing_required"]:
+        st.error("Missing required columns: " + ", ".join(info["missing_required"])
+                 + ". Every row would be rejected, so fix the file first.")
+        return
+    if info["missing_optional"]:
+        st.caption("Optional columns not in your file (left blank): " + ", ".join(info["missing_optional"]))
+    if st.button(f"Ingest, clean and load {info['path'].name}", type="primary"):
+        with st.spinner("Running ingest -> clean -> load..."):
+            report = run_file(info["path"])
+        S.update(last_reports=[report], cleaned=None, upload_info=None,
+                 flash=f"Loaded {info['path'].name} as batch {report['batch_id']}")
+        clear_caches()
+        st.rerun()
+
+
 def render():
     st.header("Pipeline")
     st.caption("Ingest -> clean -> load. Every run creates a new batch, and every batch must "
@@ -99,6 +136,7 @@ def render():
         st.rerun()  # refresh the sidebar ticket count
     if S.get("flash"):
         st.success(S.pop("flash"))
+    _upload_section()
     _steps()
 
     if S.get("cleaned"):

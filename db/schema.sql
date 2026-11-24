@@ -40,11 +40,22 @@ CREATE TABLE IF NOT EXISTS ai_query_log (
   log_id INTEGER PRIMARY KEY AUTOINCREMENT, asked_at TEXT, question TEXT,
   generated_sql TEXT, validation_status TEXT, row_count INTEGER, answer_summary TEXT);
 
+-- Portal (Raise a Ticket / Agent Desk). Kept out of the AI's approved tables on purpose:
+-- requester names and emails are personal data, and the audit trail is not for text-to-SQL.
+CREATE TABLE IF NOT EXISTS portal_requests (
+  ticket_id TEXT PRIMARY KEY REFERENCES tickets(ticket_id),
+  requester_name TEXT, requester_email TEXT, site TEXT, submitted_at TEXT);
+
+CREATE TABLE IF NOT EXISTS ticket_events (
+  event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ticket_id TEXT REFERENCES tickets(ticket_id), at TEXT, actor TEXT, event_type TEXT, detail TEXT);
+
 CREATE INDEX IF NOT EXISTS idx_tickets_opened ON tickets(opened_at);
 CREATE INDEX IF NOT EXISTS idx_tickets_team ON tickets(team_id);
 CREATE INDEX IF NOT EXISTS idx_tickets_cat ON tickets(category_id);
 CREATE INDEX IF NOT EXISTS idx_resolutions_ticket ON resolutions(ticket_id);
 CREATE INDEX IF NOT EXISTS idx_rejected_batch ON rejected_records(batch_id);
+CREATE INDEX IF NOT EXISTS idx_events_ticket ON ticket_events(ticket_id);
 
 -- Convenience view used by the 8 analytics queries (not exposed to the AI).
 CREATE VIEW IF NOT EXISTS v_tickets AS

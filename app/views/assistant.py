@@ -1,14 +1,13 @@
 """Ticket Assistant page: summary + similar past incidents + suggested fix."""
 import streamlit as st
 
-from src.ai.similar_incidents import SimilarIncidentIndex, suggest_fix
+from src.ai.similar_incidents import suggest_fix
 from src.ai.summarizer import get_ticket, summarize_ticket
-from views.common import require_data, table
+from views.common import require_data, similar_index, table
 
 
-@st.cache_resource(show_spinner="Building the similarity index...")
 def _index():
-    return SimilarIncidentIndex()
+    return similar_index()
 
 
 def _similar_section(text, exclude_id=None):

@@ -47,14 +47,25 @@ def _openai(system, user, temperature, max_tokens):
 
 def _gemini(system, user, temperature, max_tokens):
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{config.GEMINI_MODEL}:generateContent"
-    r = requests.post(url, headers={"x-goog-api-key": config.GEMINI_API_KEY},
-                      json={"systemInstruction": {"parts": [{"text": system}]},
-                            "contents": [{"role": "user", "parts": [{"text": user}]}],
-                            "generationConfig": {"temperature": temperature,
-                                                 "maxOutputTokens": max_tokens}},
-                      timeout=config.LLM_TIMEOUT)
-    r.raise_for_status()
-    return "".join(p.get("text", "") for p in r.json()["candidates"][0]["content"]["parts"])
+    generation = {"temperature": temperature, "maxOutputTokens": max_tokens}
+    if config.GEMINI_MODEL.startswith("gemini-2.5-flash"):
+        # 2.5 Flash "thinks" before answering and the thinking tokens count against
+        # maxOutputTokens, which can leave an empty reply. Short ticket tasks need no thinking.
+        generation["thinkingConfig"] = {"thinkingBudget": 0}
+    for attempt in range(2):
+        r = requests.post(url, headers={"x-goog-api-key": config.GEMINI_API_KEY},
+                          json={"systemInstruction": {"parts": [{"text": system}]},
+                                "contents": [{"role": "user", "parts": [{"text": user}]}],
+                                "generationConfig": generation},
+                          timeout=config.LLM_TIMEOUT)
+        r.raise_for_status()
+        candidate = r.json()["candidates"][0]
+        text = "".join(p.get("text", "") for p in candidate.get("content", {}).get("parts", []))
+        if text.strip():
+            return text
+        # Empty reply (usually the token budget was used up): retry once with a bigger limit.
+        generation = {**generation, "maxOutputTokens": max_tokens * 4}
+    raise ValueError("Gemini returned an empty reply")
 
 
 def _ollama(system, user, temperature, max_tokens):

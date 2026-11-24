@@ -43,6 +43,12 @@ the CloudWatch screenshot is ready in another tab.
 2. Show the **Problem / Actions taken / Current status** summary (max 80 words).
 3. Show the 5 similar past incidents with similarity scores and the **Suggested fix** citing their ticket IDs.
 
+## 5b. Optional: live role-play, employee → agent (3-5 min)
+
+For an interview where you want to show the help-desk loop instead of (or after) the dashboard tour, follow
+**[docs/interview_roleplay.md](docs/interview_roleplay.md)**: upload `sample_data/demo_past_tickets.csv`, raise a
+VPN ticket as an employee, then take it as an agent, use the similar cases and the AI chat, resolve it, and track it.
+
 ## 6. Cloud and close (15 s)
 
 Show the S3 bucket (`raw/`, `processed/`, `rejected/`, `reports/`) and the CloudWatch log line from the
@@ -76,3 +82,10 @@ Lambda (file name, size, 200 rows).
    embeddings in a vector database, and keep the same guard in front of the LLM.
 10. **Why are recent breach rates so high?** Tickets still open past their SLA count as breached, so the
     newest months include the open backlog. Resolved-only breach rate is flat (~9%); ask IncidentIQ for "breach rate per month for resolved tickets only" to show it.
+11. **How does the agent's AI chat stay grounded?** It only sees the ticket and the top-5 retrieved past
+    cases, must cite ticket ids, every cited id is checked against what was retrieved, and advice from outside
+    the cases must be labelled. It has no tools, so it cannot change anything.
+12. **Can the AI read employee names and emails?** No. They are stored in `portal_requests`, which is not on
+    the text-to-SQL allow-list; tests prove both the static check and the database-level block refuse it.
+13. **Does the system learn from fixes?** Yes: a resolved ticket's notes are indexed immediately, so the next
+    similar ticket can cite it. A human writes the resolution; the AI never closes tickets.

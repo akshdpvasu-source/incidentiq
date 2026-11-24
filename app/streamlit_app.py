@@ -11,12 +11,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))      # app/ -> import v
 import streamlit as st
 
 from src.ai.llm_client import llm_status
-from views import ask, assistant, cloud, common, dashboard, pipeline, quality
+from views import agent_desk, ask, assistant, cloud, common, dashboard, pipeline, quality, raise_ticket
 
 st.set_page_config(page_title="IncidentIQ", page_icon=":material/insights:", layout="wide")
 
-PAGES = {"Pipeline": pipeline, "Dashboard": dashboard, "Ask IncidentIQ (AI)": ask,
-         "Ticket Assistant": assistant, "Data Quality & Audit": quality, "Cloud": cloud}
+PAGES = {"Pipeline": pipeline, "Raise a Ticket (Employee)": raise_ticket, "Agent Desk (IT Agent)": agent_desk,
+         "Dashboard": dashboard, "Ask IncidentIQ (AI)": ask, "Ticket Assistant": assistant,
+         "Data Quality & Audit": quality, "Cloud": cloud}
 
 
 @st.cache_data(ttl=30, show_spinner=False)
